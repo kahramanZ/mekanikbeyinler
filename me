@@ -1,0 +1,97 @@
+// MekanikBeyinler Canlı Tasarım // Stack: React + Tailwind CSS + Firebase (backend)
+
+import React, { useState, useEffect } from 'react'; import { Card, CardContent } from "@/components/ui/card"; import { Button } from "@/components/ui/button"; import { motion } from "framer-motion"; import { initializeApp } from "firebase/app"; import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+const firebaseConfig = { apiKey: "YOUR_FIREBASE_API_KEY", authDomain: "YOUR_FIREBASE_AUTH_DOMAIN", projectId: "YOUR_FIREBASE_PROJECT_ID", storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET", messagingSenderId: "YOUR_FIREBASE_SENDER_ID", appId: "YOUR_FIREBASE_APP_ID", };
+
+const app = initializeApp(firebaseConfig); const db = getFirestore(app);
+
+const categories = ["Termodinamik", "Lineer Cebir", "Mukavemet", "İstatistik"];
+
+const App = () => { const [email, setEmail] = useState(""); const [viewedCategories, setViewedCategories] = useState({}); const [startTimes, setStartTimes] = useState({}); const [formData, setFormData] = useState({ name: "", studentNo: "", answer: "" }); const [selectedCategory, setSelectedCategory] = useState(null); const [formSubmitted, setFormSubmitted] = useState(false);
+
+useEffect(() => { const stored = JSON.parse(localStorage.getItem("viewedCategories")); if (stored) setViewedCategories(stored); }, []);
+
+const handleViewQuestion = (category) => { if (!email) return alert("Lütfen mail adresinizi girin."); if (viewedCategories[category]) return alert("Bu soruyu zaten görüntülediniz.");
+
+const now = new Date().toISOString();
+const updated = { ...viewedCategories, [category]: now };
+setViewedCategories(updated);
+setStartTimes((prev) => ({ ...prev, [category]: now }));
+setSelectedCategory(category);
+localStorage.setItem("viewedCategories", JSON.stringify(updated));
+
+};
+
+const handleInputChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
+
+const handleSubmit = async (e) => { e.preventDefault(); const start = new Date(startTimes[selectedCategory]); const now = new Date(); const diff = (now - start) / 1000; if (diff > 1800) return alert("30 dakika süresi aşıldı.");
+
+await addDoc(collection(db, "answers"), {
+  ...formData,
+  email,
+  category: selectedCategory,
+  timestamp: serverTimestamp(),
+});
+setFormSubmitted(true);
+alert("Cevabınız gönderildi!");
+
+};
+
+return ( <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6 font-sans"> <motion.h1 className="text-5xl font-extrabold text-center text-blue-800 drop-shadow-md" initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }}>MekanikBeyinler</motion.h1> <p className="text-center text-lg text-gray-600 mt-2">Her ayın 4 sorusunu çöz, her biri için 250 TL ödül kazan!</p>
+
+<div className="max-w-md mx-auto my-6">
+    <input
+      type="email"
+      placeholder="E-posta adresiniz"
+      className="w-full border border-gray-300 p-2 rounded"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+    />
+  </div>
+
+  <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+    {categories.map((cat) => (
+      <Card key={cat} className="bg-white shadow-xl">
+        <CardContent className="p-4 space-y-3">
+          <h2 className="text-2xl font-semibold text-blue-700">{cat}</h2>
+          {viewedCategories[cat] ? (
+            <p className="text-gray-700">Soru içeriği: Buraya {cat} sorusu eklenecek.</p>
+          ) : (
+            <Button onClick={() => handleViewQuestion(cat)}>Soruyu Görüntüle</Button>
+          )}
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+
+  {selectedCategory && viewedCategories[selectedCategory] && !formSubmitted && (
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mt-10 bg-white p-6 shadow-md rounded space-y-4">
+      <h3 className="text-xl font-semibold text-blue-700">Cevap Gönder ({selectedCategory})</h3>
+      <input name="name" required placeholder="Ad Soyad" onChange={handleInputChange} className="border p-2 w-full" />
+      <input name="studentNo" required placeholder="Öğrenci No" onChange={handleInputChange} className="border p-2 w-full" />
+      <textarea name="answer" required placeholder="Cevabınız" onChange={handleInputChange} className="border p-2 w-full h-32" />
+      <Button type="submit">Gönder</Button>
+    </form>
+  )}
+
+  <div className="max-w-4xl mx-auto mt-12">
+    <h2 className="text-2xl font-bold text-blue-800 mb-4">Ayın Kazananları</h2>
+    <ul className="list-disc list-inside text-gray-700">
+      <li>Henüz kazanan açıklanmadı.</li>
+    </ul>
+  </div>
+
+  <div className="max-w-4xl mx-auto mt-12">
+    <h2 className="text-2xl font-bold text-blue-800 mb-4">Admin Panel (Taslak)</h2>
+    <ul className="list-disc list-inside text-gray-700">
+      <li>Soru ekleme formu</li>
+      <li>Gelen cevapları listeleme</li>
+      <li>Kazanan seçme</li>
+    </ul>
+  </div>
+</div>
+
+); };
+
+export default App;
